@@ -29,6 +29,10 @@ public class MainActivity extends AppCompatActivity {
 
     // List used to display ingredients
     private ArrayList<String> ingredientList;
+
+    // Stores the database ID for each displayed ingredient
+    private ArrayList<Integer> ingredientIds;
+
     private ArrayAdapter<String> adapter;
 
     @Override
@@ -37,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
 
-        // Connect buttons to the XML layout
+        // Connect buttons
         btnAddIngredient = findViewById(R.id.btnAddIngredient);
         btnSuggestedRecipes = findViewById(R.id.btnSuggestedRecipes);
         btnSettings = findViewById(R.id.btnSettings);
@@ -49,10 +53,11 @@ public class MainActivity extends AppCompatActivity {
         // Create database helper
         databaseHelper = new DatabaseHelper(this);
 
-        // Create ingredient list
+        // Create lists
         ingredientList = new ArrayList<>();
+        ingredientIds = new ArrayList<>();
 
-        // Connect the list to the ListView
+        // Connect ingredient list to ListView
         adapter = new ArrayAdapter<>(
                 this,
                 android.R.layout.simple_list_item_1,
@@ -61,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
 
         listPantry.setAdapter(adapter);
 
-        // Open Add/Edit Ingredient screen
+        // ADD INGREDIENT BUTTON
         btnAddIngredient.setOnClickListener(v -> {
 
             Intent intent = new Intent(
@@ -71,28 +76,55 @@ public class MainActivity extends AppCompatActivity {
 
             startActivity(intent);
         });
+
+        // CLICK AN INGREDIENT TO EDIT IT
+        listPantry.setOnItemClickListener(
+                (parent, view, position, id) -> {
+
+                    int ingredientId = ingredientIds.get(position);
+
+                    Intent intent = new Intent(
+                            MainActivity.this,
+                            AddEditIngredientActivity.class
+                    );
+
+                    // Send ingredient ID to the edit screen
+                    intent.putExtra(
+                            "INGREDIENT_ID",
+                            ingredientId
+                    );
+
+                    startActivity(intent);
+                }
+        );
     }
 
-    // Load all ingredients from the database
+    // Load all ingredients from database
     private void loadIngredients() {
 
         ingredientList.clear();
+        ingredientIds.clear();
 
         Cursor cursor = databaseHelper.getAllIngredients();
 
         if (cursor.getCount() == 0) {
 
-            // No ingredients have been saved
             txtEmptyPantry.setVisibility(View.VISIBLE);
             listPantry.setVisibility(View.GONE);
 
         } else {
 
-            // Ingredients exist
             txtEmptyPantry.setVisibility(View.GONE);
             listPantry.setVisibility(View.VISIBLE);
 
             while (cursor.moveToNext()) {
+
+                // Get ingredient ID
+                int ingredientId = cursor.getInt(
+                        cursor.getColumnIndexOrThrow(
+                                DatabaseHelper.COLUMN_ID
+                        )
+                );
 
                 String name = cursor.getString(
                         cursor.getColumnIndexOrThrow(
@@ -123,17 +155,19 @@ public class MainActivity extends AppCompatActivity {
                                 "\nQuantity: " + quantity + " " + unit +
                                 "\nExpiry: " + expiryDate;
 
+                // Add information to both lists
                 ingredientList.add(ingredient);
+                ingredientIds.add(ingredientId);
             }
         }
 
         cursor.close();
 
-        // Refresh the ListView
+        // Refresh ListView
         adapter.notifyDataSetChanged();
     }
 
-    // Refresh pantry whenever MainActivity becomes visible
+    // Refresh pantry when returning to MainActivity
     @Override
     protected void onResume() {
         super.onResume();

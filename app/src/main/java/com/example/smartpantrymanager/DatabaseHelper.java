@@ -88,6 +88,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         );
     }
 
+    // Get one ingredient using its ID
+    public Cursor getIngredientById(int id) {
+
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        return db.query(
+                TABLE_INGREDIENTS,
+                null,
+                COLUMN_ID + " = ?",
+                new String[]{String.valueOf(id)},
+                null,
+                null,
+                null
+        );
+    }
+
     public boolean updateIngredient(
             int id,
             String name,
