@@ -66,7 +66,11 @@ public class MainActivity extends AppCompatActivity {
 
         listPantry.setAdapter(adapter);
 
+
+        // ============================================
         // ADD INGREDIENT BUTTON
+        // ============================================
+
         btnAddIngredient.setOnClickListener(v -> {
 
             Intent intent = new Intent(
@@ -77,7 +81,26 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
+
+        // ============================================
+        // SUGGESTED RECIPES BUTTON
+        // ============================================
+
+        btnSuggestedRecipes.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    SuggestedRecipesActivity.class
+            );
+
+            startActivity(intent);
+        });
+
+
+        // ============================================
         // CLICK AN INGREDIENT TO EDIT IT
+        // ============================================
+
         listPantry.setOnItemClickListener(
                 (parent, view, position, id) -> {
 
@@ -99,7 +122,11 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    // Load all ingredients from database
+
+    // ============================================
+    // LOAD INGREDIENTS FROM DATABASE
+    // ============================================
+
     private void loadIngredients() {
 
         ingredientList.clear();
@@ -109,11 +136,13 @@ public class MainActivity extends AppCompatActivity {
 
         if (cursor.getCount() == 0) {
 
+            // Pantry is empty
             txtEmptyPantry.setVisibility(View.VISIBLE);
             listPantry.setVisibility(View.GONE);
 
         } else {
 
+            // Pantry contains ingredients
             txtEmptyPantry.setVisibility(View.GONE);
             listPantry.setVisibility(View.VISIBLE);
 
@@ -126,30 +155,35 @@ public class MainActivity extends AppCompatActivity {
                         )
                 );
 
+                // Get ingredient name
                 String name = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_NAME
                         )
                 );
 
+                // Get quantity
                 double quantity = cursor.getDouble(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_QUANTITY
                         )
                 );
 
+                // Get unit
                 String unit = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_UNIT
                         )
                 );
 
+                // Get expiry date
                 String expiryDate = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_EXPIRY_DATE
                         )
                 );
 
+                // Create text that will appear in the ListView
                 String ingredient =
                         name +
                                 "\nQuantity: " + quantity + " " + unit +
@@ -167,7 +201,11 @@ public class MainActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
     }
 
-    // Refresh pantry when returning to MainActivity
+
+    // ============================================
+    // REFRESH PANTRY
+    // ============================================
+
     @Override
     protected void onResume() {
         super.onResume();
