@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -27,13 +26,11 @@ public class MainActivity extends AppCompatActivity {
     // Database
     private DatabaseHelper databaseHelper;
 
-    // List used to display ingredients
-    private ArrayList<String> ingredientList;
+    // Stores Ingredient objects
+    private ArrayList<Ingredient> ingredientList;
 
-    // Stores the database ID for each displayed ingredient
-    private ArrayList<Integer> ingredientIds;
-
-    private ArrayAdapter<String> adapter;
+    // Custom adapter
+    private IngredientAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,14 +50,12 @@ public class MainActivity extends AppCompatActivity {
         // Create database helper
         databaseHelper = new DatabaseHelper(this);
 
-        // Create lists
+        // Create ingredient list
         ingredientList = new ArrayList<>();
-        ingredientIds = new ArrayList<>();
 
-        // Connect ingredient list to ListView
-        adapter = new ArrayAdapter<>(
+        // Use our CUSTOM ADAPTER
+        adapter = new IngredientAdapter(
                 this,
-                android.R.layout.simple_list_item_1,
                 ingredientList
         );
 
@@ -98,23 +93,40 @@ public class MainActivity extends AppCompatActivity {
 
 
         // ============================================
+        // SETTINGS BUTTON
+        // ============================================
+
+        btnSettings.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    SettingsActivity.class
+            );
+
+            startActivity(intent);
+        });
+
+
+        // ============================================
         // CLICK AN INGREDIENT TO EDIT IT
         // ============================================
 
         listPantry.setOnItemClickListener(
                 (parent, view, position, id) -> {
 
-                    int ingredientId = ingredientIds.get(position);
+                    // Get the ingredient that was clicked
+                    Ingredient ingredient =
+                            ingredientList.get(position);
 
                     Intent intent = new Intent(
                             MainActivity.this,
                             AddEditIngredientActivity.class
                     );
 
-                    // Send ingredient ID to the edit screen
+                    // Send ingredient ID to edit screen
                     intent.putExtra(
                             "INGREDIENT_ID",
-                            ingredientId
+                            ingredient.getId()
                     );
 
                     startActivity(intent);
@@ -130,7 +142,6 @@ public class MainActivity extends AppCompatActivity {
     private void loadIngredients() {
 
         ingredientList.clear();
-        ingredientIds.clear();
 
         Cursor cursor = databaseHelper.getAllIngredients();
 
@@ -148,56 +159,53 @@ public class MainActivity extends AppCompatActivity {
 
             while (cursor.moveToNext()) {
 
-                // Get ingredient ID
                 int ingredientId = cursor.getInt(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_ID
                         )
                 );
 
-                // Get ingredient name
                 String name = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_NAME
                         )
                 );
 
-                // Get quantity
                 double quantity = cursor.getDouble(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_QUANTITY
                         )
                 );
 
-                // Get unit
                 String unit = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_UNIT
                         )
                 );
 
-                // Get expiry date
                 String expiryDate = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_EXPIRY_DATE
                         )
                 );
 
-                // Create text that will appear in the ListView
-                String ingredient =
-                        name +
-                                "\nQuantity: " + quantity + " " + unit +
-                                "\nExpiry: " + expiryDate;
+                // Create an Ingredient object
+                Ingredient ingredient = new Ingredient(
+                        ingredientId,
+                        name,
+                        quantity,
+                        unit,
+                        expiryDate
+                );
 
-                // Add information to both lists
+                // Add it to the list
                 ingredientList.add(ingredient);
-                ingredientIds.add(ingredientId);
             }
         }
 
         cursor.close();
 
-        // Refresh ListView
+        // Refresh custom ListView
         adapter.notifyDataSetChanged();
     }
 

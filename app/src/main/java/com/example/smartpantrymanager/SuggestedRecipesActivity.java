@@ -1,5 +1,6 @@
 package com.example.smartpantrymanager;
 
+import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
@@ -15,12 +16,16 @@ public class SuggestedRecipesActivity extends AppCompatActivity {
     private ListView listRecipes;
     private TextView txtRecipeMessage;
 
-    private ArrayList<String> recipeList;
-    private ArrayList<String> pantryIngredients;
-
-    private ArrayAdapter<String> adapter;
-
     private DatabaseHelper databaseHelper;
+
+    // Stores the names of recipes that can be made
+    private ArrayList<String> recipeList;
+
+    // Stores the database ID of each displayed recipe
+    private ArrayList<Integer> recipeIds;
+
+    // Connects recipeList to the ListView
+    private ArrayAdapter<String> adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,7 +42,7 @@ public class SuggestedRecipesActivity extends AppCompatActivity {
 
         // Create lists
         recipeList = new ArrayList<>();
-        pantryIngredients = new ArrayList<>();
+        recipeIds = new ArrayList<>();
 
         // Create adapter
         adapter = new ArrayAdapter<>(
@@ -48,113 +53,80 @@ public class SuggestedRecipesActivity extends AppCompatActivity {
 
         listRecipes.setAdapter(adapter);
 
-        // Load pantry ingredients
-        loadPantryIngredients();
+        // ============================================
+        // CLICK A RECIPE TO VIEW ITS DETAILS
+        // ============================================
 
-        // Generate recipe suggestions
-        suggestRecipes();
+        listRecipes.setOnItemClickListener(
+                (parent, view, position, id) -> {
+
+                    // Get the database ID of the selected recipe
+                    int selectedRecipeId =
+                            recipeIds.get(position);
+
+                    // Open RecipeDetailsActivity
+                    Intent intent = new Intent(
+                            SuggestedRecipesActivity.this,
+                            RecipeDetailsActivity.class
+                    );
+
+                    // Send recipe ID to RecipeDetailsActivity
+                    intent.putExtra(
+                            "RECIPE_ID",
+                            selectedRecipeId
+                    );
+
+                    startActivity(intent);
+                }
+        );
+
+        // Find recipes that match pantry ingredients
+        loadSuggestedRecipes();
     }
 
 
-    // Load ingredient names from SQLite
-    private void loadPantryIngredients() {
+    // ============================================
+    // LOAD SUGGESTED RECIPES
+    // ============================================
 
-        pantryIngredients.clear();
+    private void loadSuggestedRecipes() {
 
-        Cursor cursor = databaseHelper.getAllIngredients();
+        recipeList.clear();
+        recipeIds.clear();
 
-        while (cursor.moveToNext()) {
+        Cursor recipeCursor =
+                databaseHelper.getAllRecipes();
 
-            String name = cursor.getString(
-                    cursor.getColumnIndexOrThrow(
-                            DatabaseHelper.COLUMN_NAME
-                    )
-            );
+        while (recipeCursor.moveToNext()) {
 
-            // Convert to lowercase to make matching easier
-            pantryIngredients.add(name.toLowerCase());
-        }
+            int recipeId =
+                    recipeCursor.getInt(
+                            recipeCursor.getColumnIndexOrThrow(
+                                    DatabaseHelper.RECIPE_ID
+                            )
+                    );
 
-        cursor.close();
-    }
+            String recipeName =
+                    recipeCursor.getString(
+                            recipeCursor.getColumnIndexOrThrow(
+                                    DatabaseHelper.RECIPE_NAME
+                            )
+                    );
 
+            // Check whether pantry has everything needed
+            if (canMakeRecipe(recipeId)) {
 
-    // Check whether an ingredient exists
-    private boolean hasIngredient(String ingredient) {
+                // Display recipe name
+                recipeList.add(recipeName);
 
-        for (String pantryItem : pantryIngredients) {
-
-            if (pantryItem.equalsIgnoreCase(ingredient)) {
-                return true;
+                // Store recipe ID at the same position
+                recipeIds.add(recipeId);
             }
         }
 
-        return false;
-    }
+        recipeCursor.close();
 
-
-    // Suggest recipes
-    private void suggestRecipes() {
-
-        recipeList.clear();
-
-
-        // Eggs + Bread
-        if (hasIngredient("eggs") &&
-                hasIngredient("bread")) {
-
-            recipeList.add(
-                    "Egg Toast\n" +
-                            "Uses: Eggs, Bread"
-            );
-        }
-
-
-        // Rice + Eggs
-        if (hasIngredient("rice") &&
-                hasIngredient("eggs")) {
-
-            recipeList.add(
-                    "Egg Fried Rice\n" +
-                            "Uses: Rice, Eggs"
-            );
-        }
-
-
-        // Tomato + Onion
-        if (hasIngredient("tomato") &&
-                hasIngredient("onion")) {
-
-            recipeList.add(
-                    "Tomato and Onion Salad\n" +
-                            "Uses: Tomato, Onion"
-            );
-        }
-
-
-        // Chicken + Rice
-        if (hasIngredient("chicken") &&
-                hasIngredient("rice")) {
-
-            recipeList.add(
-                    "Chicken and Rice\n" +
-                            "Uses: Chicken, Rice"
-            );
-        }
-
-
-        // Potato + Onion
-        if (hasIngredient("potato") &&
-                hasIngredient("onion")) {
-
-            recipeList.add(
-                    "Potato and Onion Fry\n" +
-                            "Uses: Potato, Onion"
-            );
-        }
-
-
-        // No matching recipes
+        // Display appropriate message
         if (recipeList.isEmpty()) {
 
             txtRecipeMessage.setText(
@@ -168,8 +140,107 @@ public class SuggestedRecipesActivity extends AppCompatActivity {
             );
         }
 
-
         // Refresh ListView
         adapter.notifyDataSetChanged();
+    }
+
+
+    // ============================================
+    // CHECK IF A RECIPE CAN BE MADE
+    // ============================================
+
+    private boolean canMakeRecipe(int recipeId) {
+
+        Cursor requiredIngredients =
+                databaseHelper.getRecipeIngredients(recipeId);
+
+        while (requiredIngredients.moveToNext()) {
+
+            String requiredName =
+                    requiredIngredients.getString(
+                            requiredIngredients.getColumnIndexOrThrow(
+                                    DatabaseHelper.RI_INGREDIENT_NAME
+                            )
+                    );
+
+            double requiredQuantity =
+                    requiredIngredients.getDouble(
+                            requiredIngredients.getColumnIndexOrThrow(
+                                    DatabaseHelper.RI_QUANTITY
+                            )
+                    );
+
+            String requiredUnit =
+                    requiredIngredients.getString(
+                            requiredIngredients.getColumnIndexOrThrow(
+                                    DatabaseHelper.RI_UNIT
+                            )
+                    );
+
+            // Check pantry for this ingredient
+            if (!pantryHasIngredient(
+                    requiredName,
+                    requiredQuantity,
+                    requiredUnit)) {
+
+                requiredIngredients.close();
+                return false;
+            }
+        }
+
+        requiredIngredients.close();
+
+        return true;
+    }
+
+
+    // ============================================
+    // CHECK PANTRY INGREDIENT
+    // ============================================
+
+    private boolean pantryHasIngredient(
+            String requiredName,
+            double requiredQuantity,
+            String requiredUnit) {
+
+        Cursor pantryCursor =
+                databaseHelper.getAllIngredients();
+
+        while (pantryCursor.moveToNext()) {
+
+            String pantryName =
+                    pantryCursor.getString(
+                            pantryCursor.getColumnIndexOrThrow(
+                                    DatabaseHelper.COLUMN_NAME
+                            )
+                    );
+
+            double pantryQuantity =
+                    pantryCursor.getDouble(
+                            pantryCursor.getColumnIndexOrThrow(
+                                    DatabaseHelper.COLUMN_QUANTITY
+                            )
+                    );
+
+            String pantryUnit =
+                    pantryCursor.getString(
+                            pantryCursor.getColumnIndexOrThrow(
+                                    DatabaseHelper.COLUMN_UNIT
+                            )
+                    );
+
+            // Compare name, quantity and unit
+            if (pantryName.equalsIgnoreCase(requiredName)
+                    && pantryUnit.equalsIgnoreCase(requiredUnit)
+                    && pantryQuantity >= requiredQuantity) {
+
+                pantryCursor.close();
+                return true;
+            }
+        }
+
+        pantryCursor.close();
+
+        return false;
     }
 }

@@ -141,10 +141,13 @@ public class AddEditIngredientActivity extends AppCompatActivity {
                          selectedMonth,
                          selectedDay) -> {
 
-                            String date =
-                                    selectedDay + "/" +
-                                            (selectedMonth + 1) + "/" +
-                                            selectedYear;
+                            String date = String.format(
+                                    java.util.Locale.getDefault(),
+                                    "%02d/%02d/%04d",
+                                    selectedDay,
+                                    selectedMonth + 1,
+                                    selectedYear
+                            );
 
                             etExpiryDate.setText(date);
                         },
