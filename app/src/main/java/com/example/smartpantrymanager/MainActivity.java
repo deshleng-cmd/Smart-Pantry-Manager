@@ -3,12 +3,15 @@ package com.example.smartpantrymanager;
 import android.content.Intent;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 import java.util.ArrayList;
 
@@ -32,11 +35,26 @@ public class MainActivity extends AppCompatActivity {
     // Custom adapter
     private IngredientAdapter adapter;
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
+
+
+        // ============================================
+        // TOOLBAR
+        // ============================================
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+
+        setSupportActionBar(toolbar);
+
+
+        // ============================================
+        // CONNECT XML COMPONENTS
+        // ============================================
 
         // Connect buttons
         btnAddIngredient = findViewById(R.id.btnAddIngredient);
@@ -47,13 +65,22 @@ public class MainActivity extends AppCompatActivity {
         listPantry = findViewById(R.id.listPantry);
         txtEmptyPantry = findViewById(R.id.txtEmptyPantry);
 
-        // Create database helper
+
+        // ============================================
+        // DATABASE
+        // ============================================
+
         databaseHelper = new DatabaseHelper(this);
+
+
+        // ============================================
+        // CUSTOM ADAPTER
+        // ============================================
 
         // Create ingredient list
         ingredientList = new ArrayList<>();
 
-        // Use our CUSTOM ADAPTER
+        // Use our custom adapter
         adapter = new IngredientAdapter(
                 this,
                 ingredientList
@@ -159,37 +186,43 @@ public class MainActivity extends AppCompatActivity {
 
             while (cursor.moveToNext()) {
 
+                // Get ingredient ID
                 int ingredientId = cursor.getInt(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_ID
                         )
                 );
 
+                // Get ingredient name
                 String name = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_NAME
                         )
                 );
 
+                // Get ingredient quantity
                 double quantity = cursor.getDouble(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_QUANTITY
                         )
                 );
 
+                // Get ingredient unit
                 String unit = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_UNIT
                         )
                 );
 
+                // Get expiry date
                 String expiryDate = cursor.getString(
                         cursor.getColumnIndexOrThrow(
                                 DatabaseHelper.COLUMN_EXPIRY_DATE
                         )
                 );
 
-                // Create an Ingredient object
+
+                // Create Ingredient object
                 Ingredient ingredient = new Ingredient(
                         ingredientId,
                         name,
@@ -198,7 +231,8 @@ public class MainActivity extends AppCompatActivity {
                         expiryDate
                 );
 
-                // Add it to the list
+
+                // Add ingredient to list
                 ingredientList.add(ingredient);
             }
         }
@@ -211,7 +245,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     // ============================================
-    // REFRESH PANTRY
+    // REFRESH PANTRY WHEN RETURNING TO SCREEN
     // ============================================
 
     @Override
@@ -221,5 +255,80 @@ public class MainActivity extends AppCompatActivity {
         if (databaseHelper != null) {
             loadIngredients();
         }
+    }
+
+
+    // ============================================
+    // CREATE NAVIGATION MENU
+    // ============================================
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        getMenuInflater().inflate(
+                R.menu.menu_main,
+                menu
+        );
+
+        return true;
+    }
+
+
+    // ============================================
+    // NAVIGATION MENU OPTIONS
+    // ============================================
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int itemId = item.getItemId();
+
+
+        // --------------------------------------------
+        // PANTRY
+        // --------------------------------------------
+
+        if (itemId == R.id.menuPantry) {
+
+            // Already on Pantry screen
+            return true;
+        }
+
+
+        // --------------------------------------------
+        // SUGGESTED RECIPES
+        // --------------------------------------------
+
+        if (itemId == R.id.menuRecipes) {
+
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    SuggestedRecipesActivity.class
+            );
+
+            startActivity(intent);
+
+            return true;
+        }
+
+
+        // --------------------------------------------
+        // SETTINGS
+        // --------------------------------------------
+
+        if (itemId == R.id.menuSettings) {
+
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    SettingsActivity.class
+            );
+
+            startActivity(intent);
+
+            return true;
+        }
+
+
+        return super.onOptionsItemSelected(item);
     }
 }
