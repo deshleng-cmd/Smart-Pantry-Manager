@@ -1,6 +1,8 @@
+
 package com.example.smartpantrymanager;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.view.Menu;
@@ -11,6 +13,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 
 import java.util.ArrayList;
@@ -38,6 +41,31 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // ============================================
+        // DARK MODE - LOAD SAVED USER PREFERENCE
+        // ============================================
+
+        // Open the same settings used by SettingsActivity
+        SharedPreferences preferences = getSharedPreferences(
+                "SmartPantrySettings",
+                MODE_PRIVATE
+        );
+
+        // Check whether Dark Mode was previously enabled
+        // Default is false, so the app starts in Light Mode
+        boolean darkModeEnabled = preferences.getBoolean(
+                "darkMode",
+                false
+        );
+
+        // Apply the saved theme before creating the screen
+        AppCompatDelegate.setDefaultNightMode(
+                darkModeEnabled
+                        ? AppCompatDelegate.MODE_NIGHT_YES
+                        : AppCompatDelegate.MODE_NIGHT_NO
+        );
+
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
