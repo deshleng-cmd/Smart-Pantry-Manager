@@ -79,4 +79,58 @@
         android:textSize="14sp"
         android:paddingTop="8dp" />
 
+
+    <!-- ===================================== -->
+    <!-- APP INFORMATION -->
+    <!-- ===================================== -->
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="App Information"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="?attr/colorOnSurface"
+        android:layout_marginTop="30dp"
+        android:layout_marginBottom="15dp" />
+
+    <!-- Application Name -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Application: Smart Pantry Manager"
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:paddingBottom="12dp" />
+
+    <!-- Application Version -->
+    <TextView
+        android:id="@+id/txtAppVersion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Version: "
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:paddingBottom="12dp" />
+
+    <!-- Application Build -->
+    <TextView
+        android:id="@+id/txtAppBuild"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Build: "
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:paddingBottom="12dp" />
+
+    <!-- Database Information -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Database: SQLite"
+        android:textSize="16sp"
+        android:textColor="?attr/colorOnSurface"
+        android:paddingBottom="12dp" />
+
+
 </LinearLayout>
