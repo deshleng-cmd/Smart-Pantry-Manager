@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="?attr/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp">
+
+        <!-- ===================================== -->
+        <!-- APP TITLE -->
+        <!-- ===================================== -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Smart Pantry Manager"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:gravity="center"
+            android:layout_marginBottom="12dp" />
+
+        <!-- ===================================== -->
+        <!-- WELCOME MESSAGE -->
+        <!-- ===================================== -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Welcome to your smart kitchen!"
+            android:textSize="17sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:gravity="center"
+            android:layout_marginBottom="35dp" />
+
+        <!-- ===================================== -->
+        <!-- ADD INGREDIENT BUTTON -->
+        <!-- ===================================== -->
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHomeAddIngredient"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add Ingredient"
+            android:textAllCaps="false"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp"
+            app:icon="@drawable/ic_add"
+            app:iconTint="?attr/colorOnPrimaryContainer"
+            app:iconSize="24dp"
+            app:iconPadding="12dp"
+            app:iconGravity="textStart" />
+
+        <!-- ===================================== -->
+        <!-- SUGGESTED RECIPES BUTTON -->
+        <!-- ===================================== -->
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHomeRecipes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Suggested Recipes"
+            android:textAllCaps="false"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp"
+            app:icon="@drawable/ic_recipes"
+            app:iconTint="?attr/colorOnPrimaryContainer"
+            app:iconSize="24dp"
+            app:iconPadding="12dp"
+            app:iconGravity="textStart" />
+
+        <!-- ===================================== -->
+        <!-- SETTINGS BUTTON -->
+        <!-- ===================================== -->
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHomeSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Settings"
+            android:textAllCaps="false"
+            android:minHeight="56dp"
+            android:layout_marginBottom="16dp"
+            app:icon="@drawable/ic_settings"
+            app:iconTint="?attr/colorOnPrimaryContainer"
+            app:iconSize="24dp"
+            app:iconPadding="12dp"
+            app:iconGravity="textStart" />
+
+        <!-- ===================================== -->
+        <!-- VIEW MY PANTRY BUTTON -->
+        <!-- ===================================== -->
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnHomePantry"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="View My Pantry"
+            android:textAllCaps="false"
+            android:minHeight="56dp"
+            android:layout_marginBottom="25dp"
+            app:icon="@drawable/ic_pantry"
+            app:iconTint="?attr/colorOnPrimaryContainer"
+            app:iconSize="24dp"
+            app:iconPadding="12dp"
+            app:iconGravity="textStart" />
+
+        <!-- ===================================== -->
+        <!-- FOOTER -->
+        <!-- ===================================== -->
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Your pantry, your recipes, made simple."
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+</ScrollView>
+
+

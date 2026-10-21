@@ -11,32 +11,69 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartPantryManager">
+
+        <!-- ===================================== -->
+        <!-- HOME PAGE - STARTING SCREEN -->
+        <!-- ===================================== -->
+
         <activity
-            android:name=".MainActivity"
+            android:name=".HomeActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
+        <!-- ===================================== -->
+        <!-- MY PANTRY SCREEN -->
+        <!-- ===================================== -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- ===================================== -->
+        <!-- ADD AND EDIT INGREDIENTS -->
+        <!-- ===================================== -->
+
         <activity
             android:name=".AddEditIngredientActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- ===================================== -->
+        <!-- SUGGESTED RECIPES -->
+        <!-- ===================================== -->
+
         <activity
             android:name=".SuggestedRecipesActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- ===================================== -->
+        <!-- SETTINGS -->
+        <!-- ===================================== -->
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- ===================================== -->
+        <!-- RECIPE DETAILS -->
+        <!-- ===================================== -->
+
         <activity
             android:name=".RecipeDetailsActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
     </application>
 
 </manifest>
