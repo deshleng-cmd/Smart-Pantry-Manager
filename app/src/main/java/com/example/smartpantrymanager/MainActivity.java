@@ -12,11 +12,16 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.widget.Toolbar;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -46,20 +51,16 @@ public class MainActivity extends AppCompatActivity {
         // DARK MODE - LOAD SAVED USER PREFERENCE
         // ============================================
 
-        // Open the same settings used by SettingsActivity
         SharedPreferences preferences = getSharedPreferences(
                 "SmartPantrySettings",
                 MODE_PRIVATE
         );
 
-        // Check whether Dark Mode was previously enabled
-        // Default is false, so the app starts in Light Mode
         boolean darkModeEnabled = preferences.getBoolean(
                 "darkMode",
                 false
         );
 
-        // Apply the saved theme before creating the screen
         AppCompatDelegate.setDefaultNightMode(
                 darkModeEnabled
                         ? AppCompatDelegate.MODE_NIGHT_YES
@@ -84,12 +85,10 @@ public class MainActivity extends AppCompatActivity {
         // CONNECT XML COMPONENTS
         // ============================================
 
-        // Connect buttons
         btnAddIngredient = findViewById(R.id.btnAddIngredient);
         btnSuggestedRecipes = findViewById(R.id.btnSuggestedRecipes);
         btnSettings = findViewById(R.id.btnSettings);
 
-        // Connect pantry components
         listPantry = findViewById(R.id.listPantry);
         txtEmptyPantry = findViewById(R.id.txtEmptyPantry);
 
@@ -105,10 +104,8 @@ public class MainActivity extends AppCompatActivity {
         // CUSTOM ADAPTER
         // ============================================
 
-        // Create ingredient list
         ingredientList = new ArrayList<>();
 
-        // Use our custom adapter
         adapter = new IngredientAdapter(
                 this,
                 ingredientList
@@ -163,28 +160,27 @@ public class MainActivity extends AppCompatActivity {
 
 
         // ============================================
-        // CLICK AN INGREDIENT TO EDIT IT
+        // CLICK AN INGREDIENT
         // ============================================
 
         listPantry.setOnItemClickListener(
                 (parent, view, position, id) -> {
 
-                    // Get the ingredient that was clicked
+                    // Get the selected ingredient
                     Ingredient ingredient =
                             ingredientList.get(position);
 
-                    Intent intent = new Intent(
-                            MainActivity.this,
-                            AddEditIngredientActivity.class
-                    );
+                    // Check whether ingredient is expired
+                    if (isExpired(ingredient.getExpiryDate())) {
 
-                    // Send ingredient ID to edit screen
-                    intent.putExtra(
-                            "INGREDIENT_ID",
-                            ingredient.getId()
-                    );
+                        // Show Keep, Edit, Remove options
+                        showExpiredIngredientDialog(ingredient);
 
-                    startActivity(intent);
+                    } else {
+
+                        // Open existing edit screen
+                        editIngredient(ingredient);
+                    }
                 }
         );
     }
@@ -249,7 +245,6 @@ public class MainActivity extends AppCompatActivity {
                         )
                 );
 
-
                 // Create Ingredient object
                 Ingredient ingredient = new Ingredient(
                         ingredientId,
@@ -258,7 +253,6 @@ public class MainActivity extends AppCompatActivity {
                         unit,
                         expiryDate
                 );
-
 
                 // Add ingredient to list
                 ingredientList.add(ingredient);
@@ -269,6 +263,128 @@ public class MainActivity extends AppCompatActivity {
 
         // Refresh custom ListView
         adapter.notifyDataSetChanged();
+    }
+
+
+    // ============================================
+    // CHECK IF INGREDIENT HAS EXPIRED
+    // ============================================
+
+    private boolean isExpired(String expiryDate) {
+
+        if (expiryDate == null || expiryDate.trim().isEmpty()) {
+            return false;
+        }
+
+        SimpleDateFormat dateFormat =
+                new SimpleDateFormat("dd/MM/yyyy", Locale.US);
+
+        dateFormat.setLenient(false);
+
+        try {
+
+            Date expiry = dateFormat.parse(expiryDate);
+
+            // Get today's date without time
+            Date today = dateFormat.parse(
+                    dateFormat.format(new Date())
+            );
+
+            // True if expiry date is before today
+            return expiry.before(today);
+
+        } catch (ParseException e) {
+
+            return false;
+        }
+    }
+
+
+    // ============================================
+    // OPEN INGREDIENT EDIT SCREEN
+    // ============================================
+
+    private void editIngredient(Ingredient ingredient) {
+
+        Intent intent = new Intent(
+                MainActivity.this,
+                AddEditIngredientActivity.class
+        );
+
+        // Send selected ingredient ID
+        intent.putExtra(
+                "INGREDIENT_ID",
+                ingredient.getId()
+        );
+
+        startActivity(intent);
+    }
+
+
+    // ============================================
+    // EXPIRED INGREDIENT DIALOG
+    // ============================================
+
+    private void showExpiredIngredientDialog(
+            Ingredient ingredient) {
+
+        new AlertDialog.Builder(this)
+
+                .setTitle("Expired Ingredient")
+
+                .setMessage(
+                        ingredient.getName()
+                                + " expired on "
+                                + ingredient.getExpiryDate()
+                                + ".\n\nWhat would you like to do?"
+                )
+
+                // KEEP INGREDIENT
+                .setNeutralButton("Keep", (dialog, which) -> {
+
+                    dialog.dismiss();
+                })
+
+                // EDIT INGREDIENT
+                .setNegativeButton("Edit", (dialog, which) -> {
+
+                    editIngredient(ingredient);
+                })
+
+                // REMOVE INGREDIENT
+                .setPositiveButton("Remove", (dialog, which) -> {
+
+                    // Ask for confirmation before deleting
+                    new AlertDialog.Builder(MainActivity.this)
+
+                            .setTitle("Confirm Removal")
+
+                            .setMessage(
+                                    "Are you sure you want to remove "
+                                            + ingredient.getName()
+                                            + " from your pantry?"
+                            )
+
+                            .setNegativeButton("Cancel", null)
+
+                            .setPositiveButton(
+                                    "Delete",
+                                    (confirmDialog, confirmWhich) -> {
+
+                                        // Delete selected ingredient
+                                        databaseHelper.deleteIngredient(
+                                                ingredient.getId()
+                                        );
+
+                                        // Refresh pantry list
+                                        loadIngredients();
+                                    }
+                            )
+
+                            .show();
+                })
+
+                .show();
     }
 
 
@@ -311,7 +427,6 @@ public class MainActivity extends AppCompatActivity {
 
         int itemId = item.getItemId();
 
-
         // --------------------------------------------
         // PANTRY
         // --------------------------------------------
@@ -321,7 +436,6 @@ public class MainActivity extends AppCompatActivity {
             // Already on Pantry screen
             return true;
         }
-
 
         // --------------------------------------------
         // SUGGESTED RECIPES
@@ -339,7 +453,6 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
 
-
         // --------------------------------------------
         // SETTINGS
         // --------------------------------------------
@@ -355,7 +468,6 @@ public class MainActivity extends AppCompatActivity {
 
             return true;
         }
-
 
         return super.onOptionsItemSelected(item);
     }

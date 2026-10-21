@@ -5,6 +5,15 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 public class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -1056,4 +1065,590 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "slices"
         );
     }
+
+
+    // ============================================
+    // RECIPE AVAILABILITY AND COOKING
+    // ============================================
+
+    private static final double EPSILON = 0.0000001;
+
+    // Stores one pantry ingredient batch.
+    // Quantities are converted to base units internally.
+    private static class PantryStock {
+
+        int id;
+        double quantity;
+        Date expiry;
+        double conversionFactor;
+
+        PantryStock(int id, double quantity,
+                    Date expiry, double conversionFactor) {
+
+            this.id = id;
+            this.quantity = quantity;
+            this.expiry = expiry;
+            this.conversionFactor = conversionFactor;
+        }
+    }
+
+    // ============================================
+    // NORMALIZE INGREDIENT NAMES
+    // ============================================
+
+    private String normalizeIngredientName(String name) {
+
+        if (name == null) {
+            return "";
+        }
+
+        String result = name.trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", " ");
+
+        // Common irregular plural names
+        if (result.equals("tomatoes")) {
+            return "tomato";
+        }
+
+        if (result.equals("potatoes")) {
+            return "potato";
+        }
+
+        if (result.equals("loaves")) {
+            return "loaf";
+        }
+
+        // Common regular plurals
+        if (result.equals("eggs")) {
+            return "egg";
+        }
+
+        if (result.equals("bananas")) {
+            return "banana";
+        }
+
+        if (result.equals("onions")) {
+            return "onion";
+        }
+
+        if (result.equals("carrots")) {
+            return "carrot";
+        }
+
+        // General plural handling
+        if (result.endsWith("s")
+                && result.length() > 3
+                && !result.endsWith("ss")) {
+
+            result = result.substring(
+                    0,
+                    result.length() - 1
+            );
+        }
+
+        return result;
+    }
+
+    // ============================================
+    // NORMALIZE MEASUREMENT UNITS
+    // ============================================
+
+    private String normalizeUnit(String unit) {
+
+        if (unit == null) {
+            return "";
+        }
+
+        String result = unit.trim()
+                .toLowerCase(Locale.ROOT);
+
+        switch (result) {
+
+            case "kg":
+            case "kgs":
+            case "kilogram":
+            case "kilograms":
+            case "g":
+            case "gram":
+            case "grams":
+                return "g";
+
+            case "l":
+            case "litre":
+            case "litres":
+            case "liter":
+            case "liters":
+            case "ml":
+            case "millilitre":
+            case "millilitres":
+            case "milliliter":
+            case "milliliters":
+                return "ml";
+
+            case "item":
+            case "items":
+            case "piece":
+            case "pieces":
+            case "pcs":
+                return "items";
+
+            case "slice":
+            case "slices":
+                return "slices";
+
+            default:
+                return result;
+        }
+    }
+
+    // ============================================
+    // CONVERT QUANTITY INTO BASE UNITS
+    // ============================================
+
+    private double convertQuantity(double quantity,
+                                   String unit) {
+
+        if (unit == null) {
+            return quantity;
+        }
+
+        String result = unit.trim()
+                .toLowerCase(Locale.ROOT);
+
+        switch (result) {
+
+            case "kg":
+            case "kgs":
+            case "kilogram":
+            case "kilograms":
+                return quantity * 1000.0;
+
+            case "l":
+            case "litre":
+            case "litres":
+            case "liter":
+            case "liters":
+                return quantity * 1000.0;
+
+            default:
+                return quantity;
+        }
+    }
+
+    // ============================================
+    // CREATE MATCHING KEY
+    // ============================================
+
+    private String ingredientKey(String name,
+                                 String unit) {
+
+        return normalizeIngredientName(name)
+                + "\u0001"
+                + normalizeUnit(unit);
+    }
+
+    // ============================================
+    // PARSE EXPIRY DATE
+    // ============================================
+
+    private Date parseExpiry(String value) {
+
+        if (value == null) {
+            return null;
+        }
+
+        SimpleDateFormat format =
+                new SimpleDateFormat(
+                        "dd/MM/yyyy",
+                        Locale.US
+                );
+
+        format.setLenient(false);
+
+        try {
+            return format.parse(value.trim());
+
+        } catch (ParseException e) {
+            return null;
+        }
+    }
+
+    // ============================================
+    // GET RECIPE REQUIREMENTS
+    // ============================================
+
+    private Map<String, Double> getRequirements(
+            SQLiteDatabase db, int recipeId) {
+
+        Map<String, Double> requirements =
+                new HashMap<>();
+
+        Cursor cursor = db.query(
+                TABLE_RECIPE_INGREDIENTS,
+                new String[]{
+                        RI_INGREDIENT_NAME,
+                        RI_QUANTITY,
+                        RI_UNIT
+                },
+                RI_RECIPE_ID + "=?",
+                new String[]{String.valueOf(recipeId)},
+                null,
+                null,
+                null
+        );
+
+        try {
+
+            while (cursor.moveToNext()) {
+
+                String name = cursor.getString(0);
+                double quantity = cursor.getDouble(1);
+                String unit = cursor.getString(2);
+
+                String key = ingredientKey(name, unit);
+
+                double convertedQuantity =
+                        convertQuantity(quantity, unit);
+
+                double previous =
+                        requirements.containsKey(key)
+                                ? requirements.get(key)
+                                : 0;
+
+                requirements.put(
+                        key,
+                        previous + convertedQuantity
+                );
+            }
+
+        } finally {
+            cursor.close();
+        }
+
+        return requirements;
+    }
+
+    // ============================================
+    // GET USABLE PANTRY STOCK
+    // ============================================
+
+    private Map<String, ArrayList<PantryStock>>
+    getUsableStock(SQLiteDatabase db) {
+
+        Map<String, ArrayList<PantryStock>> stock =
+                new HashMap<>();
+
+        SimpleDateFormat format =
+                new SimpleDateFormat(
+                        "dd/MM/yyyy",
+                        Locale.US
+                );
+
+        Date today =
+                parseExpiry(format.format(new Date()));
+
+        Cursor cursor = db.query(
+                TABLE_INGREDIENTS,
+                new String[]{
+                        COLUMN_ID,
+                        COLUMN_NAME,
+                        COLUMN_QUANTITY,
+                        COLUMN_UNIT,
+                        COLUMN_EXPIRY_DATE
+                },
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        try {
+
+            while (cursor.moveToNext()) {
+
+                int id = cursor.getInt(0);
+                String name = cursor.getString(1);
+                double quantity = cursor.getDouble(2);
+                String unit = cursor.getString(3);
+                String expiryDate = cursor.getString(4);
+
+                Date expiry = parseExpiry(expiryDate);
+
+                // Ignore expired or empty stock
+                if (expiry == null
+                        || expiry.before(today)
+                        || quantity <= 0) {
+                    continue;
+                }
+
+                String key = ingredientKey(name, unit);
+
+                double convertedQuantity =
+                        convertQuantity(quantity, unit);
+
+                // Conversion factor is used when saving
+                // the remaining quantity back to SQLite.
+                double conversionFactor =
+                        convertQuantity(1.0, unit);
+
+                if (!stock.containsKey(key)) {
+                    stock.put(key, new ArrayList<>());
+                }
+
+                stock.get(key).add(
+                        new PantryStock(
+                                id,
+                                convertedQuantity,
+                                expiry,
+                                conversionFactor
+                        )
+                );
+            }
+
+        } finally {
+            cursor.close();
+        }
+
+        // Use earliest-expiring stock first
+        for (ArrayList<PantryStock> batches
+                : stock.values()) {
+
+            Collections.sort(
+                    batches,
+                    (a, b) -> {
+                        int comparison =
+                                a.expiry.compareTo(b.expiry);
+
+                        if (comparison != 0) {
+                            return comparison;
+                        }
+
+                        return Integer.compare(a.id, b.id);
+                    }
+            );
+        }
+
+        return stock;
+    }
+
+    // ============================================
+    // FORMAT QUANTITY
+    // ============================================
+
+    private String formatQuantity(double value) {
+
+        return String.format(
+                        Locale.US,
+                        "%.3f",
+                        value
+                ).replaceAll("0+$", "")
+                .replaceAll("\\.$", "");
+    }
+
+    // ============================================
+    // GET MISSING INGREDIENTS
+    // ============================================
+
+    public String getMissingIngredients(int recipeId) {
+
+        SQLiteDatabase db = getReadableDatabase();
+
+        Map<String, Double> requirements =
+                getRequirements(db, recipeId);
+
+        Map<String, ArrayList<PantryStock>> stock =
+                getUsableStock(db);
+
+        if (requirements.isEmpty()) {
+            return "Recipe ingredients are unavailable.";
+        }
+
+        StringBuilder missing = new StringBuilder();
+
+        for (Map.Entry<String, Double> requirement
+                : requirements.entrySet()) {
+
+            String key = requirement.getKey();
+            double needed = requirement.getValue();
+            double available = 0;
+
+            ArrayList<PantryStock> batches =
+                    stock.get(key);
+
+            if (batches != null) {
+
+                for (PantryStock batch : batches) {
+                    available += batch.quantity;
+                }
+            }
+
+            if (available + EPSILON < needed) {
+
+                String[] parts = key.split("\u0001", 2);
+
+                missing.append("• ")
+                        .append(parts[0])
+                        .append(": need ")
+                        .append(
+                                formatQuantity(
+                                        needed - available
+                                )
+                        )
+                        .append(" more ")
+                        .append(parts[1])
+                        .append("\n");
+            }
+        }
+
+        return missing.toString();
+    }
+
+    // ============================================
+    // MAKE RECIPE
+    // ============================================
+
+    public boolean makeRecipe(int recipeId) {
+
+        SQLiteDatabase db = getWritableDatabase();
+
+        // All changes happen in one transaction
+        db.beginTransaction();
+
+        try {
+
+            Map<String, Double> requirements =
+                    getRequirements(db, recipeId);
+
+            if (requirements.isEmpty()) {
+                return false;
+            }
+
+            Map<String, ArrayList<PantryStock>> stock =
+                    getUsableStock(db);
+
+            // ========================================
+            // CHECK ALL INGREDIENTS FIRST
+            // ========================================
+
+            for (Map.Entry<String, Double> requirement
+                    : requirements.entrySet()) {
+
+                double available = 0;
+
+                ArrayList<PantryStock> batches =
+                        stock.get(requirement.getKey());
+
+                if (batches != null) {
+
+                    for (PantryStock batch : batches) {
+                        available += batch.quantity;
+                    }
+                }
+
+                if (available + EPSILON
+                        < requirement.getValue()) {
+
+                    return false;
+                }
+            }
+
+            // ========================================
+            // DEDUCT INGREDIENT QUANTITIES
+            // ========================================
+
+            for (Map.Entry<String, Double> requirement
+                    : requirements.entrySet()) {
+
+                double remaining =
+                        requirement.getValue();
+
+                ArrayList<PantryStock> batches =
+                        stock.get(requirement.getKey());
+
+                for (PantryStock batch : batches) {
+
+                    if (remaining <= EPSILON) {
+                        break;
+                    }
+
+                    double used =
+                            Math.min(
+                                    batch.quantity,
+                                    remaining
+                            );
+
+                    double newQuantity =
+                            batch.quantity - used;
+
+                    if (newQuantity <= EPSILON) {
+
+                        // Delete the ingredient when empty
+                        int deleted = db.delete(
+                                TABLE_INGREDIENTS,
+                                COLUMN_ID + "=?",
+                                new String[]{
+                                        String.valueOf(batch.id)
+                                }
+                        );
+
+                        if (deleted != 1) {
+                            return false;
+                        }
+
+                    } else {
+
+                        // Convert back to the original unit
+                        double originalUnitQuantity =
+                                newQuantity
+                                        / batch.conversionFactor;
+
+                        ContentValues values =
+                                new ContentValues();
+
+                        values.put(
+                                COLUMN_QUANTITY,
+                                originalUnitQuantity
+                        );
+
+                        int updated = db.update(
+                                TABLE_INGREDIENTS,
+                                values,
+                                COLUMN_ID + "=?",
+                                new String[]{
+                                        String.valueOf(batch.id)
+                                }
+                        );
+
+                        if (updated != 1) {
+                            return false;
+                        }
+                    }
+
+                    remaining -= used;
+                }
+            }
+
+            db.setTransactionSuccessful();
+
+            return true;
+
+        } catch (Exception e) {
+
+            android.util.Log.e(
+                    "DatabaseHelper",
+                    "Could not make recipe",
+                    e
+            );
+
+            return false;
+
+        } finally {
+
+            db.endTransaction();
+        }
+    }
+
+
 }

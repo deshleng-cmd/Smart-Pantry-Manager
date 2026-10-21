@@ -1,19 +1,32 @@
+
 package com.example.smartpantrymanager;
 
 import android.database.Cursor;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class RecipeDetailsActivity extends AppCompatActivity {
 
+    // ============================================
+    // DECLARE COMPONENTS
+    // ============================================
+
     private TextView txtRecipeName;
     private TextView txtIngredients;
     private TextView txtSteps;
+    private TextView txtRecipeAvailability;
 
+    private Button btnMakeRecipe;
+
+    // Database
     private DatabaseHelper databaseHelper;
 
+    // Selected recipe ID
     private int recipeId;
 
     @Override
@@ -22,28 +35,187 @@ public class RecipeDetailsActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_recipe_details);
 
-        // Connect XML components
+        // ============================================
+        // CONNECT XML COMPONENTS
+        // ============================================
+
         txtRecipeName = findViewById(R.id.txtRecipeName);
+
         txtIngredients = findViewById(R.id.txtIngredients);
+
         txtSteps = findViewById(R.id.txtSteps);
 
-        // Connect to database
+        txtRecipeAvailability =
+                findViewById(R.id.txtRecipeAvailability);
+
+        btnMakeRecipe = findViewById(R.id.btnMakeRecipe);
+
+        // ============================================
+        // CONNECT TO DATABASE
+        // ============================================
+
         databaseHelper = new DatabaseHelper(this);
 
-        // Get recipe ID sent from SuggestedRecipesActivity
+        // ============================================
+        // GET SELECTED RECIPE ID
+        // ============================================
+
         recipeId = getIntent().getIntExtra("RECIPE_ID", -1);
 
-        // Make sure a valid recipe ID was received
         if (recipeId != -1) {
 
             loadRecipeDetails();
 
+            checkIngredientAvailability();
+
         } else {
 
             txtRecipeName.setText("Recipe not found");
+
+            txtRecipeAvailability.setText("Invalid recipe.");
+
+            btnMakeRecipe.setEnabled(false);
+        }
+
+        // ============================================
+        // MAKE RECIPE BUTTON
+        // ============================================
+
+        btnMakeRecipe.setOnClickListener(v -> {
+
+            if (recipeId == -1) {
+                return;
+            }
+
+            // Check whether ingredients are available
+            String missing =
+                    databaseHelper.getMissingIngredients(recipeId);
+
+            // If ingredients are missing, show a message
+            if (!missing.isEmpty()) {
+
+                showMissingIngredients(missing);
+
+                checkIngredientAvailability();
+
+                return;
+            }
+
+            // Ask user to confirm before deducting stock
+            new AlertDialog.Builder(this)
+
+                    .setTitle("Make Recipe")
+
+                    .setMessage(
+                            "Make " + txtRecipeName.getText()
+                                    + "?\n\n"
+                                    + "The required ingredients will "
+                                    + "be deducted from your pantry."
+                    )
+
+                    .setNegativeButton("Cancel", null)
+
+                    .setPositiveButton(
+                            "Make Recipe",
+                            (dialog, which) -> {
+
+                                // Deduct ingredients from pantry
+                                boolean success =
+                                        databaseHelper.makeRecipe(recipeId);
+
+                                if (success) {
+
+                                    // Show success message
+                                    new AlertDialog.Builder(this)
+
+                                            .setTitle("Recipe Made!")
+
+                                            .setMessage(
+                                                    "Your pantry quantities "
+                                                            + "have been updated."
+                                            )
+
+                                            .setPositiveButton(
+                                                    "OK", null
+                                            )
+
+                                            .show();
+
+                                } else {
+
+                                    // Show failure message
+                                    Toast.makeText(
+                                            this,
+                                            "Recipe could not be made. "
+                                                    + "Please check your pantry.",
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                }
+
+                                // Refresh availability
+                                checkIngredientAvailability();
+                            }
+                    )
+
+                    .show();
+        });
+    }
+
+    // ============================================
+    // CHECK INGREDIENT AVAILABILITY
+    // ============================================
+
+    private void checkIngredientAvailability() {
+
+        if (recipeId == -1) {
+
+            btnMakeRecipe.setEnabled(false);
+
+            return;
+        }
+
+        String missing =
+                databaseHelper.getMissingIngredients(recipeId);
+
+        if (missing.isEmpty()) {
+
+            // All ingredients are available
+            txtRecipeAvailability.setText(
+                    "✓ All ingredients available!\n"
+                            + "You can make this recipe."
+            );
+
+            btnMakeRecipe.setEnabled(true);
+
+        } else {
+
+            // Some ingredients are missing
+            txtRecipeAvailability.setText(
+                    "Missing Ingredients:\n\n" + missing
+            );
+
+            btnMakeRecipe.setEnabled(false);
         }
     }
 
+    // ============================================
+    // SHOW MISSING INGREDIENTS
+    // ============================================
+
+    private void showMissingIngredients(String missing) {
+
+        new AlertDialog.Builder(this)
+
+                .setTitle("Not Enough Ingredients")
+
+                .setMessage(
+                        "You still need:\n\n" + missing
+                )
+
+                .setPositiveButton("OK", null)
+
+                .show();
+    }
 
     // ============================================
     // LOAD RECIPE DETAILS
@@ -51,11 +223,13 @@ public class RecipeDetailsActivity extends AppCompatActivity {
 
     private void loadRecipeDetails() {
 
+        // Get selected recipe from database
         Cursor recipeCursor =
                 databaseHelper.getRecipeById(recipeId);
 
         if (recipeCursor.moveToFirst()) {
 
+            // Get recipe name
             String recipeName =
                     recipeCursor.getString(
                             recipeCursor.getColumnIndexOrThrow(
@@ -63,6 +237,7 @@ public class RecipeDetailsActivity extends AppCompatActivity {
                             )
                     );
 
+            // Get recipe instructions
             String recipeSteps =
                     recipeCursor.getString(
                             recipeCursor.getColumnIndexOrThrow(
@@ -70,12 +245,23 @@ public class RecipeDetailsActivity extends AppCompatActivity {
                             )
                     );
 
+            // Display recipe information
             txtRecipeName.setText(recipeName);
+
             txtSteps.setText(recipeSteps);
+
+        } else {
+
+            txtRecipeName.setText("Recipe not found");
+
+            recipeId = -1;
         }
 
         recipeCursor.close();
 
+        if (recipeId == -1) {
+            return;
+        }
 
         // ============================================
         // LOAD REQUIRED INGREDIENTS
@@ -84,11 +270,11 @@ public class RecipeDetailsActivity extends AppCompatActivity {
         Cursor ingredientCursor =
                 databaseHelper.getRecipeIngredients(recipeId);
 
-        StringBuilder ingredients =
-                new StringBuilder();
+        StringBuilder ingredients = new StringBuilder();
 
         while (ingredientCursor.moveToNext()) {
 
+            // Get ingredient name
             String name =
                     ingredientCursor.getString(
                             ingredientCursor.getColumnIndexOrThrow(
@@ -96,6 +282,7 @@ public class RecipeDetailsActivity extends AppCompatActivity {
                             )
                     );
 
+            // Get required quantity
             double quantity =
                     ingredientCursor.getDouble(
                             ingredientCursor.getColumnIndexOrThrow(
@@ -103,6 +290,7 @@ public class RecipeDetailsActivity extends AppCompatActivity {
                             )
                     );
 
+            // Get ingredient unit
             String unit =
                     ingredientCursor.getString(
                             ingredientCursor.getColumnIndexOrThrow(
@@ -110,6 +298,7 @@ public class RecipeDetailsActivity extends AppCompatActivity {
                             )
                     );
 
+            // Add ingredient to display
             ingredients.append("• ")
                     .append(name)
                     .append(" - ")
@@ -121,6 +310,21 @@ public class RecipeDetailsActivity extends AppCompatActivity {
 
         ingredientCursor.close();
 
+        // Display all required ingredients
         txtIngredients.setText(ingredients.toString());
+    }
+
+    // ============================================
+    // REFRESH AVAILABILITY
+    // ============================================
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (databaseHelper != null && recipeId != -1) {
+
+            checkIngredientAvailability();
+        }
     }
 }

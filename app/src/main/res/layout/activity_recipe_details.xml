@@ -4,7 +4,9 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="20dp">
+    android:fillViewport="true"
+    android:padding="20dp"
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,6 +21,7 @@
             android:text="Recipe Name"
             android:textSize="28sp"
             android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
             android:gravity="center"
             android:padding="10dp"
             android:layout_marginBottom="25dp" />
@@ -30,6 +33,7 @@
             android:text="Ingredients Required"
             android:textSize="20sp"
             android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginBottom="10dp" />
 
         <!-- Recipe Ingredients -->
@@ -39,6 +43,7 @@
             android:layout_height="wrap_content"
             android:text="Ingredients"
             android:textSize="17sp"
+            android:textColor="?attr/colorOnSurface"
             android:padding="10dp"
             android:layout_marginBottom="25dp" />
 
@@ -49,6 +54,7 @@
             android:text="Instructions"
             android:textSize="20sp"
             android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
             android:layout_marginBottom="10dp" />
 
         <!-- Recipe Instructions -->
@@ -58,7 +64,30 @@
             android:layout_height="wrap_content"
             android:text="Recipe instructions"
             android:textSize="17sp"
-            android:padding="10dp" />
+            android:textColor="?attr/colorOnSurface"
+            android:padding="10dp"
+            android:layout_marginBottom="25dp" />
+
+        <!-- Ingredient Availability -->
+        <TextView
+            android:id="@+id/txtRecipeAvailability"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Checking pantry ingredients..."
+            android:textSize="16sp"
+            android:textColor="?attr/colorOnSurface"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Make Recipe Button -->
+        <Button
+            android:id="@+id/btnMakeRecipe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Make Recipe"
+            android:textAllCaps="false"
+            android:minHeight="56dp"
+            android:layout_marginBottom="20dp" />
 
     </LinearLayout>
 
